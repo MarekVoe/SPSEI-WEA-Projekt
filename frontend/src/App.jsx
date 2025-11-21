@@ -1,16 +1,19 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
-import MainPage from "./pages/MainPage.jsx";
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import MainPage from './pages/MainPage.jsx'
+import ContactPage from "./pages/ContactPage.jsx";
 
 function App() {
-
-  return (
-    <>
-      <MainPage/>
-    </>
-  )
+    return (
+        <BrowserRouter>
+            <main style={{ padding: 10 }}>
+                <Routes>
+                    <Route path="/" element={<MainPage />} />
+                    <Route path="/kontakty" element={<ContactPage />} />
+                </Routes>
+            </main>
+        </BrowserRouter>
+    )
 }
 
 export default App
