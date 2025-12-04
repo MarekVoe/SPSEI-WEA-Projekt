@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import MainPage from './pages/MainPage.jsx'
 import ContactPage from "./pages/ContactPage.jsx";
 import BottomMenu from "./components/BottomMenu.jsx";
@@ -14,6 +14,7 @@ function App() {
                     <Route path="/kontakty" element={<ContactPage />} />
                 </Routes>
             </main>
+            <BottomMenu />
         </BrowserRouter>
     )
 }
