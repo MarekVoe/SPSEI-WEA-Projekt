@@ -7,19 +7,16 @@ use PDO;
 class ContactController {
     private Contact $model;
 
-    public function __construct(PDO $pdo)
-    {
+    public function __construct(PDO $pdo) {
         $this->model = new Contact($pdo);
     }
 
-    public function index()
-    {
+    public function index() {
         header('Content-Type: application/json');
         echo json_encode($this->model->all());
     }
 
-    public function store()
-    {
+    public function store() {
         $data = $_POST ?: json_decode(file_get_contents('php://input'), true);
         if (empty($data['email']) || empty($data['firstName']) || empty($data['lastName'])) {
             http_response_code(400);
@@ -31,8 +28,7 @@ class ContactController {
         echo json_encode(['id' => $id]);
     }
 
-    public function update($id)
-    {
+    public function update($id) {
         $data = $_POST ?: json_decode(file_get_contents('php://input'), true);
         if (!$this->model->update((int)$id, $data)) {
             http_response_code(500);
@@ -42,8 +38,7 @@ class ContactController {
         echo json_encode(['ok' => true]);
     }
 
-    public function delete($id)
-    {
+    public function delete($id) {
         if (!$this->model->delete((int)$id)) {
             http_response_code(500);
             echo json_encode(['error' => 'Delete failed']);

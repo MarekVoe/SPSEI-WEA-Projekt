@@ -7,8 +7,7 @@ use PDOException;
 class Database {
     private static ?PDO $pdo = null;
 
-    public static function getConnection(): PDO
-    {
+    public static function getConnection(): PDO {
         if (self::$pdo === null) {
             $host = getenv('DB_HOST') ?: 'localhost';
             $db   = getenv('DB_NAME') ?: 'wea-projekt';

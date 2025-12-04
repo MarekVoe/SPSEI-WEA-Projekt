@@ -17,13 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $dispatcher = simpleDispatcher(function (RouteCollector $r) {
     $r->addRoute('GET',    '/api/contacts',             ['ContactController', 'index']);
-    $r->addRoute('POST',   '/api/contacts',             ['ContactController', 'store']);
+    $r->addRoute('GET',    '/api/files/recent',        ['FileController', 'recent']);
+
     $r->addRoute('PUT',    '/api/contacts/{id:\d+}',    ['ContactController', 'update']);
+
     $r->addRoute('DELETE', '/api/contacts/{id:\d+}',    ['ContactController', 'delete']);
 
+    $r->addRoute('POST',   '/api/contacts',             ['ContactController', 'store']);
     $r->addRoute('POST',   '/api/send-email',           ['EmailController', 'send']);
 
-    $r->addRoute('GET',    '/api/files/recent',        ['FileController', 'recent']);
 });
 
 $routeInfo = $dispatcher->dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));

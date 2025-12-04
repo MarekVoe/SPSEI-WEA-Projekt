@@ -1,4 +1,3 @@
-// javascript
 import React, { useEffect, useRef, useState } from "react";
 
 export default function FileUploader({
@@ -12,18 +11,14 @@ export default function FileUploader({
     const [items, setItems] = useState([]);
     const itemsRef = useRef(items);
 
-    // udržujeme ref na aktuální položky pro cleanup při unmountu
     useEffect(() => {
         itemsRef.current = items;
     }, [items]);
 
-    // Volat onChange pouze při změně items (nezávisle na identitě onChange)
     useEffect(() => {
         onChange(items.map((i) => i.file));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items]);
 
-    // při unmountu zrušíme všechna vytvořená preview URL
     useEffect(() => {
         return () => {
             itemsRef.current.forEach((i) => i.preview && URL.revokeObjectURL(i.preview));
@@ -64,7 +59,6 @@ export default function FileUploader({
     const onSelect = (e) => {
         if (e.target.files?.length) {
             addFiles(e.target.files);
-            // vyčistit input, aby šlo vybrat stejné soubory znovu
             e.target.value = "";
         }
     };

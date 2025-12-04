@@ -10,8 +10,7 @@ class EmailController {
     private PDO $db;
     private Email $model;
 
-    public function __construct(PDO $pdo)
-    {
+    public function __construct(PDO $pdo) {
         $this->db = $pdo;
         $this->model = new Email($pdo);
     }

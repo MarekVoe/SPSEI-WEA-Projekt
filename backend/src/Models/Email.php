@@ -26,7 +26,6 @@ class Email {
                 $data = is_array($json) ? $json : $_POST;
             }
 
-            // recipients parsing (stejné jako dříve) ...
             $recipients = $data['recipients'] ?? [];
             if (is_string($recipients)) {
                 $decoded = json_decode($recipients, true);
@@ -56,7 +55,6 @@ class Email {
             $altText = $data['alt_text'] ?? '';
             $mailBodyHtml = $messageHtml !== '' ? $messageHtml : ($isHtml ? $body : '');
 
-            // PHPMailer setup (stejné)
             $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->SMTPAuth = true;
@@ -105,7 +103,6 @@ class Email {
                 'INSERT INTO `email_attachments` (email_id, file_id) VALUES (:email_id, :file_id)'
             );
 
-            // zpracovat nové nahrané soubory (stejné jako dříve)
             if (!empty($_FILES['attachments'])) {
                 $files = $_FILES['attachments'];
                 if (is_array($files['name'])) {
@@ -175,7 +172,6 @@ class Email {
                 }
             }
 
-            // zpracovat existující vybrané soubory (file_ids)
             $fileIds = [];
             if ($isMultipart) {
                 if (!empty($_POST['file_ids'])) {
