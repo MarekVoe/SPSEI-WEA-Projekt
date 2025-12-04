@@ -1,224 +1,271 @@
-import React, { useState, useEffect, useRef } from 'react';
+// javascript
+import React, { useEffect, useState, useRef } from 'react';
 import BottomMenu from "../components/BottomMenu.jsx";
 
-function MultiSelect({ items, value, onChange, placeholder = 'Vyhledat...' }) {
-    const [query, setQuery] = useState('');
-    const toggle = (val) => {
-        if (value.includes(val)) onChange(value.filter(v => v !== val));
-        else onChange([...value, val]);
-    };
-    const filtered = items.filter(i => {
-        const txt = `${i.firstName} ${i.lastName} ${i.email}`.toLowerCase();
-        return txt.includes(query.toLowerCase());
-    });
-    return (
-        <div className="multi-select">
-            <input
-                type="search"
-                className="w-full p-2 mb-2 bg-gray-900 border border-gray-700 rounded-md"
-                placeholder={placeholder}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-            />
-            <div className="max-h-48 overflow-auto bg-gray-800 p-2 rounded-md border border-gray-700">
-                {filtered.length === 0 && <div className="text-gray-500 text-sm p-2">Žádné výsledky</div>}
-                {filtered.map(item => {
-                    const val = `${item.email}|${item.id}`;
-                    const checked = value.includes(val);
-                    return (
-                        <label key={val} className="flex items-center space-x-2 p-1 hover:bg-gray-700 rounded">
-                            <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggle(val)}
-                                className="w-4 h-4"
-                            />
-                            <span className="text-sm">
-                                <strong>{item.firstName} {item.lastName}</strong> — <span className="text-gray-400">{item.email}</span>
-                            </span>
-                        </label>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-export default function MainPage() {
-    const [contacts, setContacts] = useState([]);
-    const [loadingContacts, setLoadingContacts] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [statusMessage, setStatusMessage] = useState(null);
-
+function MainPage() {
+    const [contacts, setContacts] = useState([]); // {id, email, first_name, last_name}
+    const [existingFiles, setExistingFiles] = useState([]); // {id, name}
     const [selectedRecipients, setSelectedRecipients] = useState([]);
-    const filesRef = useRef(null);
-    const fromEmailRef = useRef(null);
-    const fromNameRef = useRef(null);
-    const subjectRef = useRef(null);
-    const editorRef = useRef(null);
+    const [subject, setSubject] = useState('');
+    const [messageHtml, setMessageHtml] = useState('');
+    const [altText, setAltText] = useState('');
+    const [selectedExistingFiles, setSelectedExistingFiles] = useState(new Set());
+    const fileInputRef = useRef(null);
+    const [status, setStatus] = useState(null);
 
     useEffect(() => {
-        let mounted = true;
-        const load = async () => {
-            setLoadingContacts(true);
-            try {
-                const res = await fetch('http://localhost:8080/api/contacts', { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (mounted) setContacts(data);
-            } catch (e) {
-                console.error('Failed to load contacts', e);
-            } finally {
-                if (mounted) setLoadingContacts(false);
-            }
-        };
-        load();
-        return () => { mounted = false; };
+        fetch('http://localhost:8080/api/contacts')
+            .then(r => r.json())
+            .then(data => setContacts(data || []))
+            .catch(() => setContacts([]));
+
+        fetch('/api/files')
+            .then(r => r.json())
+            .then(data => setExistingFiles(data || []))
+            .catch(() => setExistingFiles([]));
     }, []);
 
-    /* malé toolbar tlačítka pro contentEditable */
-    const exec = (cmd, value = null) => {
-        document.execCommand(cmd, false, value);
-        editorRef.current && editorRef.current.focus();
-    };
+    function handleRecipientsChange(e) {
+        const values = Array.from(e.target.selectedOptions).map(o => o.value);
+        setSelectedRecipients(values);
+    }
 
-    const getEditorHtml = () => editorRef.current ? editorRef.current.innerHTML : '';
+    function toggleExistingFile(id) {
+        setSelectedExistingFiles(prev => {
+            const s = new Set(prev);
+            if (s.has(id)) s.delete(id); else s.add(id);
+            return s;
+        });
+    }
 
-    const handleSubmit = async (e) => {
+    async function handleSubmit(e) {
         e.preventDefault();
-        setStatusMessage(null);
-        setSubmitting(true);
-        try {
-            const fromEmail = fromEmailRef.current?.value?.trim() || '';
-            const fromName = fromNameRef.current?.value?.trim() || '';
-            const subject = subjectRef.current?.value?.trim() || '';
-            const bodyHtml = getEditorHtml();
-            const bodyText = bodyHtml ? bodyHtml.replace(/<[^>]+>/g, '') : '';
+        setStatus('sending');
 
-            if (!fromEmail) {
-                setStatusMessage('Vyplňte pole Odesílatel (email).');
-                setSubmitting(false);
-                return;
+        const formData = new FormData();
+        selectedRecipients.forEach(email => formData.append('recipients[]', email));
+        formData.append('subject', subject);
+        formData.append('message_html', messageHtml);
+        if (altText) formData.append('alt_text', altText);
+
+        const files = fileInputRef.current?.files;
+        if (files) {
+            for (let i = 0; i < files.length; i++) {
+                formData.append('attachments[]', files[i]);
             }
-            if (selectedRecipients.length === 0) {
-                setStatusMessage('Vyberte alespoň jednoho příjemce.');
-                setSubmitting(false);
-                return;
-            }
-
-            const form = new FormData();
-            form.append('from_email', fromEmail);
-            form.append('from_name', fromName);
-            form.append('subject', subject);
-            form.append('body_html', bodyHtml);
-            form.append('body_text', bodyText);
-
-            for (const r of selectedRecipients) form.append('recipients[]', r);
-
-            const files = filesRef.current?.files;
-            if (files && files.length) {
-                for (let i = 0; i < files.length; i++) {
-                    form.append('attachments[]', files[i], files[i].name);
-                }
-            }
-
-            const res = await fetch('http://localhost:8080/api/send-email', {
-                method: 'POST',
-                body: form,
-                credentials: 'include',
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => null);
-                throw new Error(err?.error || `HTTP ${res.status}`);
-            }
-            const body = await res.json();
-            setStatusMessage('Email odeslán (id: ' + (body.emailId ?? 'neznámé') + ').');
-
-            // clear
-            subjectRef.current.value = '';
-            if (filesRef.current) filesRef.current.value = '';
-            setSelectedRecipients([]);
-            if (editorRef.current) editorRef.current.innerHTML = '';
-        } catch (err) {
-            console.error('Send failed', err);
-            setStatusMessage('Odeslání selhalo.');
-        } finally {
-            setSubmitting(false);
         }
+
+        Array.from(selectedExistingFiles).forEach(id => formData.append('existing_attachments[]', id));
+
+        try {
+            const resp = await fetch('http://localhost:8080/api/send-email', {
+                method: 'POST',
+                body: formData,
+            });
+            if (!resp.ok) throw new Error('Chyba serveru');
+            setStatus('sent');
+            setSelectedRecipients([]);
+            setSubject('');
+            setMessageHtml('');
+            setAltText('');
+            setSelectedExistingFiles(new Set());
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (err) {
+            console.error(err);
+            setStatus('error');
+        }
+    }
+
+    const bottomMenuHeight = 88;
+
+    const styles = {
+        pageWrapper: {
+            paddingBottom: bottomMenuHeight + 16,
+            minHeight: '100vh',
+            background: '#071018',
+        },
+        container: {
+            maxWidth: 800,
+            margin: '20px auto',
+            fontFamily: 'sans-serif',
+            background: '#0f1720',
+            color: '#e6eef6',
+            padding: 20,
+            borderRadius: 8,
+            boxShadow: '0 6px 18px rgba(0,0,0,0.6)',
+            minHeight: `calc(100vh - ${bottomMenuHeight + 48}px)`,
+        },
+        label: { display: 'block', marginTop: 12, color: '#cfe6ff' },
+        input: {
+            width: '100%',
+            padding: 8,
+            marginTop: 6,
+            background: '#0b1220',
+            color: '#e6eef6',
+            border: '1px solid #26323f',
+            borderRadius: 4,
+        },
+        textarea: {
+            width: '100%',
+            padding: 8,
+            marginTop: 6,
+            background: '#0b1220',
+            color: '#e6eef6',
+            border: '1px solid #26323f',
+            borderRadius: 4,
+            resize: 'vertical',
+        },
+        select: {
+            width: '100%',
+            minHeight: 120,
+            marginTop: 6,
+            padding: 6,
+            background: '#0b1220',
+            color: '#e6eef6',
+            border: '1px solid #26323f',
+            borderRadius: 4,
+        },
+        fileBox: {
+            border: '1px solid #26323f',
+            padding: 8,
+            marginTop: 6,
+            maxHeight: 140,
+            overflow: 'auto',
+            background: '#071018',
+            borderRadius: 4,
+        },
+        checkboxLabel: { display: 'block', marginBottom: 6, color: '#d6e9ff' },
+        button: {
+            padding: '8px 16px',
+            marginTop: 8,
+            background: '#2b6cb0',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+        },
+        statusText: { marginTop: 12 },
+        smallMuted: { color: '#97a6b5' },
     };
 
     return (
-        <div className="min-h-screen bg-zinc-900 text-white p-6 sm:p-10">
-            <div className="max-w-3xl mx-auto">
-                <h1 className="text-4xl font-extrabold mb-6">Odeslat Email</h1>
+        <>
+            <div style={styles.pageWrapper}>
+                <div style={styles.container}>
+                    <h2 className="mt-0 font-bold text-2xl">Odeslat email</h2>
 
-                <form onSubmit={handleSubmit} className="space-y-6 bg-gray-800 p-6 rounded-lg border border-gray-700">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm text-gray-300 mb-1">Odesílatel - jméno</label>
-                            <input ref={fromNameRef} className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md" placeholder="Firma / Jméno" />
+                    <form onSubmit={handleSubmit}>
+                        <label style={styles.label}>
+                            Příjemci (vyberte jednoho nebo více):
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                <select
+                                    name="recipients[]"
+                                    multiple
+                                    value={selectedRecipients}
+                                    onChange={handleRecipientsChange}
+                                    style={{ ...styles.select, minHeight: 140, padding: 10, borderRadius: 6, boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.4)' }}
+                                >
+                                    {contacts.map(c => (
+                                        <option
+                                            key={c.id}
+                                            value={c.email}
+                                            style={{ background: '#0b1220', color: '#e6eef6', padding: 6 }}
+                                        >
+                                            {c.first_name} {c.last_name} &lt;{c.email}&gt;
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <div style={{ minWidth: 96, textAlign: 'center', color: '#97a6b5', padding: 8, border: '1px solid #26323f', borderRadius: 6, background: '#071018' }}>
+                                    <div style={{ fontSize: 12 }}>Vybráno</div>
+                                    <div style={{ fontWeight: 600, marginTop: 6 }}>{selectedRecipients.length}</div>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label style={styles.label}>
+                            Předmět:
+                            <input
+                                name="subject"
+                                value={subject}
+                                onChange={e => setSubject(e.target.value)}
+                                style={styles.input}
+                                required
+                            />
+                        </label>
+
+                        <label style={styles.label}>
+                            Text zprávy (HTML povoleno):
+                            <textarea
+                                name="message_html"
+                                value={messageHtml}
+                                onChange={e => setMessageHtml(e.target.value)}
+                                rows={8}
+                                style={styles.textarea}
+                                placeholder="<p>...</p>"
+                                required
+                            />
+                        </label>
+
+                        <label style={styles.label}>
+                            Alternativní ne-HTML text (volitelné):
+                            <textarea
+                                name="alt_text"
+                                value={altText}
+                                onChange={e => setAltText(e.target.value)}
+                                rows={3}
+                                style={styles.textarea}
+                                placeholder="Čistý text..."
+                            />
+                        </label>
+
+                        <div style={{ marginTop: 12 }}>
+                            <label style={styles.label}>
+                                Nahrát přílohy (volitelné):
+                                <input
+                                    type="file"
+                                    name="attachments[]"
+                                    ref={fileInputRef}
+                                    multiple
+                                    style={{ display: 'block', marginTop: 6 }}
+                                />
+                            </label>
                         </div>
-                        <div>
-                            <label className="block text-sm text-gray-300 mb-1">Odesílatel - email *</label>
-                            <input ref={fromEmailRef} type="email" required className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md" placeholder="no-reply@example.com" />
-                        </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-300 mb-1">Příjemci * (více)</label>
-                        <MultiSelect
-                            items={contacts}
-                            value={selectedRecipients}
-                            onChange={setSelectedRecipients}
-                            placeholder={loadingContacts ? 'Načítám...' : 'Vyhledat příjemce...'}
-                        />
-                        {loadingContacts && <p className="text-gray-400 text-sm mt-2">Načítám kontakty...</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-gray-300 mb-1">Předmět</label>
-                        <input ref={subjectRef} className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md" placeholder="Předmět emailu" />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-gray-300 mb-1">Text zprávy (HTML)</label>
-
-                        <div className="mb-2 space-x-2">
-                            <button type="button" onClick={() => exec('bold')} className="px-2 py-1 bg-gray-700 rounded">B</button>
-                            <button type="button" onClick={() => exec('italic')} className="px-2 py-1 bg-gray-700 rounded">I</button>
-                            <button type="button" onClick={() => exec('underline')} className="px-2 py-1 bg-gray-700 rounded">U</button>
-                            <button type="button" onClick={() => {
-                                const url = prompt('Vložte URL:');
-                                if (url) exec('createLink', url);
-                            }} className="px-2 py-1 bg-gray-700 rounded">Link</button>
+                        <div style={{ marginTop: 12 }}>
+                            <div style={{ color: '#cfe6ff' }}>Vybrat již nahrané soubory (volitelné):</div>
+                            <div style={styles.fileBox}>
+                                {existingFiles.length === 0 && <div style={styles.smallMuted}>Žádné soubory</div>}
+                                {existingFiles.map(f => (
+                                    <label key={f.id} style={styles.checkboxLabel}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedExistingFiles.has(f.id)}
+                                            onChange={() => toggleExistingFile(f.id)}
+                                            style={{ marginRight: 8 }}
+                                        />
+                                        {f.name}
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
-                        <div
-                            ref={editorRef}
-                            contentEditable
-                            suppressContentEditableWarning
-                            className="min-h-40 p-3 bg-gray-900 border border-gray-700 rounded-md"
-                            style={{ minHeight: 200 }}
-                        />
-                    </div>
+                        <div style={{ marginTop: 16 }}>
+                            <button type="submit" style={styles.button}>Odeslat</button>
+                        </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-300 mb-1">Přílohy (z počítače) — více</label>
-                        <input ref={filesRef} type="file" name="attachments[]" multiple className="w-full text-sm text-gray-300" />
-                        <p className="text-gray-500 text-xs mt-1">Pole musí mít jméno `attachments[]` aby backend rozpoznal více souborů.</p>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <button type="submit" disabled={submitting} className="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-md">
-                            {submitting ? 'Odesílám...' : 'Odeslat Email'}
-                        </button>
-                        <div className="text-sm text-gray-300">{statusMessage}</div>
-                    </div>
-                </form>
+                        <div style={styles.statusText}>
+                            {status === 'sending' && <span>Odesílám...</span>}
+                            {status === 'sent' && <span style={{ color: '#6ee7b7' }}>Email odeslán.</span>}
+                            {status === 'error' && <span style={{ color: '#ff7b7b' }}>Chyba při odesílání.</span>}
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <BottomMenu/>
-        </div>
+            <BottomMenu />
+        </>
     );
 }
+
+export default MainPage;

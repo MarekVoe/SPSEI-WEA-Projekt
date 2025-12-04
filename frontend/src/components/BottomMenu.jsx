@@ -15,6 +15,7 @@ function BottomMenu() {
 
     return (
         <Dock
+            className="mt-20 fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 rounded-full px-4 py-2 shadow-lg backdrop-blur-md border border-gray-700"
             items={items}
             panelHeight={68}
             baseItemSize={50}

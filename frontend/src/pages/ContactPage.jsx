@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BottomMenu from "../components/BottomMenu.jsx";
 
 const ContactCard = ({ contact, onDelete }) => (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg flex justify-between items-center transition duration-300 hover:bg-gray-700 border border-gray-700">
+    <div className="bg-zinc-800 p-4 rounded-lg shadow-lg flex justify-between items-center transition duration-300 hover:bg-zinc-700 border border-zinc-700">
         <div className="contact-info">
             <h3 className="text-xl font-semibold text-white-400">
                 {contact.firstName} {contact.lastName}
@@ -11,7 +11,7 @@ const ContactCard = ({ contact, onDelete }) => (
         </div>
 
         <button
-            className="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-full transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            className="bg-red-700 hover:bg-red-600 cursor-pointer text-white font-bold py-2 px-3 rounded-full transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
             onClick={() => onDelete(contact.id)}
             aria-label={`Odstranit kontakt ${contact.firstName} ${contact.lastName}`}
         >
@@ -39,43 +39,43 @@ const AddContactForm = ({ onAdd, onCancel }) => {
     };
 
     return (
-        <form className="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700" onSubmit={handleSubmit}>
+        <form className="bg-zinc-800 p-6 rounded-lg shadow-2xl border border-zinc-700" onSubmit={handleSubmit}>
             <h3 className="text-2xl font-bold mb-6 text-white-400">Přidat nový kontakt</h3>
 
             <div className="space-y-4">
                 <div className="form-group">
-                    <label htmlFor="firstName" className="block text-gray-300 text-sm font-medium mb-1">Jméno:</label>
+                    <label htmlFor="firstName" className="block text-white text-sm font-medium mb-1">Jméno:</label>
                     <input
                         id="firstName"
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         required
-                        className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full p-2.5 bg-zinc-900 border border-zinc-700 rounded-md text-white placeholder-gray-500 focus:ring-zinc-500 focus:border-zinc-500"
                         placeholder="Jan"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="lastName" className="block text-gray-300 text-sm font-medium mb-1">Příjmení:</label>
+                    <label htmlFor="lastName" className="block text-white text-sm font-medium mb-1">Příjmení:</label>
                     <input
                         id="lastName"
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         required
-                        className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full p-2.5 bg-zinc-900 border border-zinc-700 rounded-md text-white placeholder-gray-500 focus:ring-zinc-500 focus:border-zinc-500"
                         placeholder="Novák"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="email" className="block text-gray-300 text-sm font-medium mb-1">Email:</label>
+                    <label htmlFor="email" className="block text-white text-sm font-medium mb-1">Email:</label>
                     <input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:ring-white focus:border-amber-50"
+                        className="w-full p-2.5 bg-zinc-900 border border-zinc-700 rounded-md text-white placeholder-gray-500 focus:ring-zinc-500 focus:border-zinc-50"
                         placeholder="jan.novak@example.com"
                     />
                 </div>
@@ -84,13 +84,13 @@ const AddContactForm = ({ onAdd, onCancel }) => {
             <div className="flex justify-end space-x-4 mt-6">
                 <button
                     type="button"
-                    className="bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-150"
+                    className="bg-red-600 hover:bg-red-500 cursor-pointer text-white font-semibold py-2 px-4 rounded-lg transition duration-150"
                     onClick={onCancel}
                     disabled={submitting}
                 >
                     Zrušit
                 </button>
-                <button type="submit" className="bg-green-900 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150" disabled={submitting}>
+                <button type="submit" className="bg-green-700 cursor-pointer hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-150" disabled={submitting}>
                     {submitting ? 'Ukládám...' : 'Uložit'}
                 </button>
             </div>
@@ -183,7 +183,7 @@ const ContactPage = () => {
 
                 {!showForm && (
                     <button
-                        className="bg-zinc-800 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 mb-8"
+                        className="bg-zinc-800 hover:bg-zinc-600 cursor-pointer text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 focus:outline-none focus:ring-4 focus:ring-zinc-500 focus:ring-opacity-50 mb-8"
                         onClick={() => setShowForm(true)}
                     >
                         Přidat Kontakt
@@ -202,7 +202,7 @@ const ContactPage = () => {
                 <hr className="border-gray-700 mb-8" />
 
                 <h2 className="text-3xl font-bold mb-6 text-gray-300">
-                    Seznam stávajících kontaktů
+                    Seznam kontaktů
                 </h2>
 
                 {error && <p className="text-red-400 mb-4">{error}</p>}

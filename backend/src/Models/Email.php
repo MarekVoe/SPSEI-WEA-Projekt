@@ -2,59 +2,70 @@
 namespace MHrachovecSt\Backend\Models;
 
 use PDO;
+use PHPMailer\PHPMailer\PHPMailer;
 
 class Email {
     private PDO $db;
 
-    public function __construct(PDO $pdo)
-    {
+    public function __construct(PDO $pdo) {
         $this->db = $pdo;
     }
 
-    public function createEmail(array $data): int
-    {
-        $stmt = $this->db->prepare('INSERT INTO emails (from_email, from_name, subject, body_html, body_text, status, created_at) VALUES (:from_email, :from_name, :subject, :body_html, :body_text, :status, NOW())');
-        $stmt->execute([
-            ':from_email' => $data['from_email'] ?? null,
-            ':from_name'  => $data['from_name'] ?? null,
-            ':subject'    => $data['subject'] ?? null,
-            ':body_html'  => $data['body_html'] ?? null,
-            ':body_text'  => $data['body_text'] ?? null,
-            ':status'     => $data['status'] ?? 'queued',
-        ]);
-        return (int)$this->db->lastInsertId();
-    }
+    public function sendEmail() {
+        header('Content-Type: application/json; charset=utf-8');
 
-    public function addRecipient(int $emailId, string $recipientEmail, ?string $recipientName = null, ?int $contactId = null, string $type = 'to'): bool
-    {
-        $stmt = $this->db->prepare('INSERT INTO email_recipients (email_id, contact_id, recipient_email, recipient_name, recipient_type) VALUES (:email_id, :contact_id, :recipient_email, :recipient_name, :recipient_type)');
-        return $stmt->execute([
-            ':email_id' => $emailId,
-            ':contact_id' => $contactId,
-            ':recipient_email' => $recipientEmail,
-            ':recipient_name' => $recipientName,
-            ':recipient_type' => $type,
-        ]);
-    }
+        try {
+            $recipients = $_POST['recipients'] ?? [];
+            if (!is_array($recipients)) {
+                $recipients = [$recipients];
+            }
 
-    public function addAttachment(int $emailId, int $fileId): bool
-    {
-        $stmt = $this->db->prepare('INSERT INTO email_attachments (email_id, file_id) VALUES (:email_id, :file_id)');
-        return $stmt->execute([
-            ':email_id' => $emailId,
-            ':file_id' => $fileId,
-        ]);
-    }
+            $validRecipients = [];
+            foreach ($recipients as $r) {
+                $email = filter_var(trim((string)$r), FILTER_VALIDATE_EMAIL);
+                if ($email !== false) $validRecipients[] = $email;
+            }
 
-    public function markSent(int $emailId): bool
-    {
-        $stmt = $this->db->prepare('UPDATE emails SET status = "sent", sent_at = NOW() WHERE id = :id');
-        return $stmt->execute([':id' => $emailId]);
-    }
+            if (empty($validRecipients)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'No valid recipients provided']);
+                return;
+            }
 
-    public function markFailed(int $emailId): bool
-    {
-        $stmt = $this->db->prepare('UPDATE emails SET status = "failed" WHERE id = :id');
-        return $stmt->execute([':id' => $emailId]);
+            $subject = isset($_POST['subject']) ? trim($_POST['subject']) : '(no subject)';
+            $bodyHtml = $_POST['message_html'] ?? $_POST['body'] ?? '';
+            $altText = $_POST['alt_text'] ?? '';
+
+            $mail = new PHPMailer(true);
+            $mail->isSMTP();
+            $mail->SMTPAuth = true;
+            $mail->SMTPSecure = 'ssl';
+            $mail->Host = 'smtp.seznam.cz';
+            $mail->Port = 465;
+            $mail->isHTML((bool)$bodyHtml);
+
+            $mail->Username = 'spsei-wea@email.cz';
+            $mail->Password = 'WeboveAplikace2024';
+
+            $mail->setFrom($mail->Username, 'Marek Hrachovec');
+            $mail->Subject = $subject;
+            $mail->Body = $bodyHtml ?: $altText;
+            if ($altText) $mail->AltBody = $altText;
+
+            foreach ($validRecipients as $r) {
+                $mail->addAddress($r);
+            }
+
+            if (!$mail->send()) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to send email', 'message' => $mail->ErrorInfo]);
+                return;
+            }
+
+            echo json_encode(['success' => true]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Exception', 'message' => $e->getMessage()]);
+        }
     }
 }
