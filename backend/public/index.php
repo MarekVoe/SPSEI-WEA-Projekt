@@ -6,11 +6,8 @@ use function FastRoute\simpleDispatcher;
 use MHrachovecSt\Backend\Models\Database;
 
 header('Access-Control-Allow-Origin: http://localhost:5173');
-
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-
 header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -25,6 +22,8 @@ $dispatcher = simpleDispatcher(function (RouteCollector $r) {
     $r->addRoute('DELETE', '/api/contacts/{id:\d+}',    ['ContactController', 'delete']);
 
     $r->addRoute('POST',   '/api/send-email',           ['EmailController', 'send']);
+
+    $r->addRoute('GET',    '/api/files/recent',        ['FileController', 'recent']);
 });
 
 $routeInfo = $dispatcher->dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));

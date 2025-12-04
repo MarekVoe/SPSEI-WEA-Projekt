@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import Select from "react-select";
 import { Switch } from "@headlessui/react";
 import FileUploader from "./FileUploader.jsx";
+import RecentFilesSelect from "./RecentFilesSelect.jsx";
 
 function EmailForm() {
     const [contacts, setContacts] = useState([]);
@@ -17,6 +18,8 @@ function EmailForm() {
 
     const [attachments, setAttachments] = useState([]); // File[]
     const [uploaderKey, setUploaderKey] = useState(0); // pro přemountování FileUploader
+    const [selectedExistingFileIds, setSelectedExistingFileIds] = useState([]); // vybrané již nahrané soubory
+
     const [toast, setToast] = useState(null); // { type: 'success'|'error', message: string }
     const toastTimeoutRef = useRef(null);
 
@@ -132,9 +135,7 @@ function EmailForm() {
         };
     }, []);
 
-    // přijímá pole souborů od FileUploader (nebo přímo)
     function handleFilesChange(files) {
-        // očekáváme Array nebo FileList
         if (!files) {
             setAttachments([]);
             return;
@@ -153,12 +154,12 @@ function EmailForm() {
         if (sending) return;
         setSending(true);
 
-        // pokud máme přílohy, pošleme multipart/form-data
         const hasAttachments = attachments && attachments.length > 0;
+        const hasExisting = selectedExistingFileIds && selectedExistingFileIds.length > 0;
 
         try {
             let res;
-            if (hasAttachments) {
+            if (hasAttachments || hasExisting) {
                 const formData = new FormData();
                 formData.append('subject', subject);
                 selectedRecipients.forEach(r => formData.append('recipients[]', r.value));
@@ -169,13 +170,14 @@ function EmailForm() {
                     formData.append('attachments[]', file, file.name);
                 });
 
+                selectedExistingFileIds.forEach(id => formData.append('file_ids[]', id));
+
                 res = await fetch("http://localhost:8080/api/send-email", {
                     method: "POST",
                     credentials: "same-origin",
                     body: formData,
                 });
             } else {
-                // bez příloh — lze poslat jako JSON
                 const payload = {
                     subject,
                     recipients: selectedRecipients.map((o) => o.value),
@@ -198,8 +200,8 @@ function EmailForm() {
                 setSelectedRecipients([]);
                 setBody("");
                 setIsHtml(false);
-                // vymazat přílohy a přemountovat FileUploader, aby se vyčistil interní input
                 setAttachments([]);
+                setSelectedExistingFileIds([]);
                 setUploaderKey(k => k + 1);
             } else {
                 let errMsg = `Chyba: HTTP ${res.status}`;
@@ -291,6 +293,8 @@ function EmailForm() {
                     </div>
                     <div className="text-sm text-gray-300">{isHtml ? "Formát: HTML" : "Formát: Plain text"}</div>
                 </div>
+
+                <RecentFilesSelect onChange={setSelectedExistingFileIds} />
 
                 <div className="mb-4">
                     <FileUploader key={uploaderKey} files={attachments} onChange={handleFilesChange} />

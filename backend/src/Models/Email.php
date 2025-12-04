@@ -1,5 +1,4 @@
 <?php
-// php
 namespace MHrachovecSt\Backend\Models;
 
 use PDO;
@@ -27,6 +26,7 @@ class Email {
                 $data = is_array($json) ? $json : $_POST;
             }
 
+            // recipients parsing (stejné jako dříve) ...
             $recipients = $data['recipients'] ?? [];
             if (is_string($recipients)) {
                 $decoded = json_decode($recipients, true);
@@ -56,7 +56,7 @@ class Email {
             $altText = $data['alt_text'] ?? '';
             $mailBodyHtml = $messageHtml !== '' ? $messageHtml : ($isHtml ? $body : '');
 
-            // připravit PHPMailer
+            // PHPMailer setup (stejné)
             $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->SMTPAuth = true;
@@ -76,10 +76,8 @@ class Email {
             }
             foreach ($validRecipients as $r) $mail->addAddress($r);
 
-            // začneme transakci
             $this->db->beginTransaction();
 
-            // vložíme email s počátečním statusem pending
             $insertEmail = $this->db->prepare(
                 'INSERT INTO `emails` (subject, body_html, body_text, status, note) VALUES (:subject, :body_html, :body_text, :status, :note)'
             );
@@ -100,7 +98,6 @@ class Email {
                 }
             }
 
-            // připravíme prepared statementy pro tabulky files a email_attachments
             $fileInsert = $this->db->prepare(
                 "INSERT INTO `files` (`filename`, `original_name`, `path`, `mime_type`, `size`, `storage`, `uploaded_by`, `created_at`) VALUES (:filename, :original_name, :path, :mime, :size, :storage, :uploaded_by, NOW())"
             );
@@ -108,9 +105,9 @@ class Email {
                 'INSERT INTO `email_attachments` (email_id, file_id) VALUES (:email_id, :file_id)'
             );
 
+            // zpracovat nové nahrané soubory (stejné jako dříve)
             if (!empty($_FILES['attachments'])) {
                 $files = $_FILES['attachments'];
-
                 if (is_array($files['name'])) {
                     for ($i = 0; $i < count($files['name']); $i++) {
                         if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
@@ -125,7 +122,6 @@ class Email {
                         }
                         $movedFiles[] = $destPath;
 
-                        // uložíme záznam do files
                         $fileInsert->execute([
                             ':filename' => $destName,
                             ':original_name' => $original,
@@ -137,13 +133,11 @@ class Email {
                         ]);
                         $fileId = (int)$this->db->lastInsertId();
 
-                        // vytvoříme vazbu na email
                         $attachInsert->execute([
                             ':email_id' => $emailId,
                             ':file_id' => $fileId,
                         ]);
 
-                        // přidat k mailu
                         $mail->addAttachment($destPath, $original);
                     }
                 } else {
@@ -181,9 +175,37 @@ class Email {
                 }
             }
 
-            // odešli email
+            // zpracovat existující vybrané soubory (file_ids)
+            $fileIds = [];
+            if ($isMultipart) {
+                if (!empty($_POST['file_ids'])) {
+                    $fileIds = is_array($_POST['file_ids']) ? $_POST['file_ids'] : [$_POST['file_ids']];
+                }
+            } else {
+                if (!empty($data['file_ids'])) {
+                    $fileIds = is_array($data['file_ids']) ? $data['file_ids'] : [$data['file_ids']];
+                }
+            }
+
+            if (!empty($fileIds)) {
+                $stmtFile = $this->db->prepare('SELECT id, path, original_name FROM `files` WHERE id = :id LIMIT 1');
+                foreach ($fileIds as $fid) {
+                    $fid = (int)$fid;
+                    if ($fid <= 0) continue;
+                    $stmtFile->execute([':id' => $fid]);
+                    $row = $stmtFile->fetch(PDO::FETCH_ASSOC);
+                    if (!$row) continue;
+                    if (!empty($row['path']) && file_exists($row['path'])) {
+                        $mail->addAttachment($row['path'], $row['original_name'] ?? null);
+                    }
+                    $attachInsert->execute([
+                        ':email_id' => $emailId,
+                        ':file_id' => $row['id'],
+                    ]);
+                }
+            }
+
             if (!$mail->send()) {
-                // rollback + cleanup
                 $this->db->rollBack();
                 foreach ($movedFiles as $p) @unlink($p);
                 http_response_code(500);
@@ -191,7 +213,6 @@ class Email {
                 return;
             }
 
-            // aktualizujeme status emailu na sent a sent_at
             $update = $this->db->prepare('UPDATE `emails` SET status = :status, sent_at = NOW() WHERE id = :id');
             $update->execute([':status' => 'sent', ':id' => $emailId]);
 

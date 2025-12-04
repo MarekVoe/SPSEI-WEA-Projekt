@@ -103,7 +103,7 @@ export default function FileUploader({
                     <button
                         type="button"
                         onClick={openDialog}
-                        className="bg-zinc-900 hover:bg-zinc-700 text-white px-3 py-2 rounded-md border border-zinc-700"
+                        className="bg-zinc-900 cursor-pointer hover:bg-zinc-700 text-white px-3 py-2 rounded-md border border-zinc-700"
                     >
                         Přidat přílohy
                     </button>
@@ -131,9 +131,9 @@ export default function FileUploader({
                                 <button
                                     type="button"
                                     onClick={() => removeItem(it.id)}
-                                    className="text-red-400 hover:text-red-300 ml-3"
+                                    className="text-red-400 hover:text-red-300 ml-3 cursor-pointer"
                                 >
-                                    Odstranit
+                                    Zrušit
                                 </button>
                             </li>
                         ))}
